@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>康威生命游戏 | 元胞自动机模拟器</title>
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        dark: '#1E293B',
+                        light: '#F8FAFC',
+                        accent: '#8B5CF6',
+                        danger: '#EF4444',
+                        success: '#22C55E',
+                        warning: '#F59E0B',
+                        info: '#3B82F6'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .scrollbar-thin {
+                scrollbar-width: thin;
+            }
+            .scrollbar-dark::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            .scrollbar-dark::-webkit-scrollbar-track {
+                background: #1E293B;
+            }
+            .scrollbar-dark::-webkit-scrollbar-thumb {
+                background-color: #475569;
+                border-radius: 4px;
+            }
+            .grid-pattern {
+                background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+                background-size: 20px 20px;
+            }
+            .btn-3d {
+                @apply relative px-4 py-2 rounded-md font-medium transform transition-all duration-150 overflow-hidden;
+            }
+            .btn-3d-primary {
+                @apply bg-primary text-white shadow-[0_4px_0_0_#2563EB] active:translate-y-1 active:shadow-[0_2px_0_0_#2563EB] hover:brightness-105;
+            }
+            .btn-3d-secondary {
+                @apply bg-secondary text-white shadow-[0_4px_0_0_#059669] active:translate-y-1 active:shadow-[0_2px_0_0_#059669] hover:brightness-105;
+            }
+            .btn-3d-dark {
+                @apply bg-dark text-white shadow-[0_4px_0_0_#0F172A] active:translate-y-1 active:shadow-[0_2px_0_0_#0F172A] hover:brightness-105;
+            }
+            .btn-3d-light {
+                @apply bg-light text-dark shadow-[0_4px_0_0_#E2E8F0] active:translate-y-1 active:shadow-[0_2px_0_0_#E2E8F0] hover:brightness-95;
+            }
+            .btn-3d-danger {
+                @apply bg-danger text-white shadow-[0_4px_0_0_#DC2626] active:translate-y-1 active:shadow-[0_2px_0_0_#DC2626] hover:brightness-105;
+            }
+            .slider-track {
+                @apply h-2 rounded-full bg-gray-700;
+            }
+            .slider-thumb {
+                @apply w-4 h-4 rounded-full bg-primary shadow-md cursor-pointer;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+    <!-- Header -->
+    <header class="bg-dark border-b border-gray-800 shadow-md">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fa fa-cubes text-primary text-2xl"></i>
+                <h1 class="text-xl font-bold">康威生命游戏</h1>
+                <span class="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">元胞自动机模拟器</span>
+            </div>
+            
+            <nav class="hidden md:flex items-center space-x-6">
+                <button id="newGameBtn" class="flex items-center space-x-1 hover:text-primary transition-colors">
+                    <i class="fa fa-file-o"></i>
+                    <span>新游戏</span>
+                </button>
+                <button id="saveBtn" class="flex items-center space-x-1 hover:text-primary transition-colors">
+                    <i class="fa fa-save"></i>
+                    <span>保存</span>
+                </button>
+                <button id="loadBtn" class="flex items-center space-x-1 hover:text-primary transition-colors">
+                    <i class="fa fa-folder-open-o"></i>
+                    <span>加载</span>
+                </button>
+                <button id="exportBtn" class="flex items-center space-x-1 hover:text-primary transition-colors">
+                    <i class="fa fa-download"></i>
+                    <span>导出</span>
+                </button>
+                <button id="helpBtn" class="flex items-center space-x-1 hover:text-primary transition-colors">
+                    <i class="fa fa-question-circle"></i>
+                    <span>帮助</span>
+                </button>
+            </nav>
+            
+            <button id="mobileMenuBtn" class="md:hidden text-white focus:outline-none">
+                <i class="fa fa-bars text-xl"></i>
+            </button>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div id="mobileMenu" class="hidden md:hidden bg-dark border-t border-gray-800">
+            <div class="container mx-auto px-4 py-2 flex flex-col space-y-2">
+                <button id="mobileNewGameBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
+                    <i class="fa fa-file-o w-6"></i>
+                    <span>新游戏</span>
+                </button>
+                <button id="mobileSaveBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
+                    <i class="fa fa-save w-6"></i>
+                    <span>保存</span>
+                </button>
+                <button id="mobileLoadBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
+                    <i class="fa fa-folder-open-o w-6"></i>
+                    <span>加载</span>
+                </button>
+                <button id="mobileExportBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
+                    <i class="fa fa-download w-6"></i>
+                    <span>导出</span>
+                </button>
+                <button id="mobileHelpBtn" class="flex items-center space-x-2 p-2 hover:bg-gray-800 rounded">
+                    <i class="fa fa-question-circle w-6"></i>
+                    <span>帮助</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col md:flex-row">
+        <!-- Left Sidebar - Controls -->
+        <aside id="sidebar" class="w-full md:w-80 bg-dark border-r border-gray-800 flex flex-col">
+            <!-- Simulation Controls -->
+            <div class="p-4 border-b border-gray-800">
+                <h2 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fa fa-play-circle mr-2 text-primary"></i>
+                    模拟控制
+                </h2>
+                <div class="flex space-x-2 mb-4">
+                    <button id="playPauseBtn" class="btn-3d btn-3d-primary flex-1 flex items-center justify-center">
+                        <i class="fa fa-play mr-2"></i>
+                        <span>开始</span>
+                    </button>
+                    <button id="resetBtn" class="btn-3d btn-3d-dark flex-1 flex items-center justify-center">
+                        <i class="fa fa-refresh mr-2"></i>
+                        <span>重置</span>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="speedSlider" class="block text-sm font-medium text-gray-400 mb-1">
+                        速度: <span id="speedValue">1.0x</span>
+                    </label>
+                    <input 
+                        type="range" 
+                        id="speedSlider" 
+                        min="0.1" 
+                        max="10" 
+                        step="0.1" 
+                        value="1" 
+                        class="w-full slider-track appearance-none bg-gray-700 h-2 rounded-full"
+                    >
+                </div>
+                
+                <div class="flex justify-between text-sm text-gray-400">
+                    <span>代数: <span id="generationCount">0</span></span>
+                    <span>细胞: <span id="cellCount">0</span></span>
+                </div>
+            </div>
+            
+            <!-- Drawing Tools -->
+            <div class="p-4 border-b border-gray-800">
+                <h2 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fa fa-pencil mr-2 text-secondary"></i>
+                    绘制工具
+                </h2>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button id="drawToolBtn" class="btn-3d btn-3d-secondary flex items-center justify-center">
+                        <i class="fa fa-pencil mr-2"></i>
+                        <span>绘制</span>
+                    </button>
+                    <button id="eraseToolBtn" class="btn-3d btn-3d-dark flex items-center justify-center">
+                        <i class="fa fa-eraser mr-2"></i>
+                        <span>擦除</span>
+                    </button>
+                    <button id="fillToolBtn" class="btn-3d btn-3d-dark flex items-center justify-center">
+                        <i class="fa fa-tint mr-2"></i>
+                        <span>填充</span>
+                    </button>
+                    <button id="clearToolBtn" class="btn-3d btn-3d-danger flex items-center justify-center">
+                        <i class="fa fa-trash mr-2"></i>
+                        <span>清除</span>
+                    </button>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="cellSizeSlider" class="block text-sm font-medium text-gray-400 mb-1">
+                        细胞大小: <span id="cellSizeValue">10px</span>
+                    </label>
+                    <input 
+                        type="range" 
+                        id="cellSizeSlider" 
+                        min="2" 
+                        max="30" 
+                        step="1" 
+                        value="10" 
+                        class="w-full slider-track appearance-none bg-gray-700 h-2 rounded-full"
+                    >
+                </div>
+            </div>
+            
+            <!-- Pattern Library -->
+            <div class="p-4 border-b border-gray-800 flex-1 flex flex-col">
+                <h2 class="text-lg font-semibold mb-3 flex items-center">
+                    <i class="fa fa-th-large mr-2 text-accent"></i>
+                    模式库
+                </h2>
+                
+                <div class="relative mb-4">
+                    <input 
+                        type="text" 
+                        id="patternSearch" 
+                        placeholder="搜索模式..." 
+                        class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 px-4 pl-10 focus:outline-none focus:ring-2 focus:ring-accent"
+                    >
+                    <i class="fa fa-search absolute left-3 top-3 text-gray-500"></i>
+                </div>
+                
+                <div id="patternCategories" class="flex space-x-2 mb-3 overflow-x-auto scrollbar-thin scrollbar-dark">
+                    <button class="pattern-category-btn whitespace-nowrap px-3 py-1 bg-accent text-white rounded-full text-sm font-medium">
+                        全部
+                    </button>
+                    <button class="pattern-category-btn whitespace-nowrap px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-sm font-medium">
+                        稳定
+                    </button>
+                    <button class="pattern-category-btn whitespace-nowrap px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-sm font-medium">
+                        震荡器
+                    </button>
+                    <button class="pattern-category-btn whitespace-nowrap px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-sm font-medium">
+                        飞船
+                    </button>
+                    <button class="pattern-category-btn whitespace-nowrap px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-sm font-medium">
+                         Guns
+                    </button>
+                    <button class="pattern-category-btn whitespace-nowrap px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-sm font-medium">
+                        组合
+                    </button>
+                </div>
+                
+                <div id="patternLibrary" class="flex-1 overflow-y-auto scrollbar-thin scrollbar-dark">
+                    <div class="grid grid-cols-2 gap-2">
+                        <!-- Pattern items will be dynamically inserted here -->
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Main Canvas Area -->
+        <section class="flex-1 flex flex-col relative">
+            <!-- View Controls -->
+            <div class="absolute top-4 right-4 z-10 flex space-x-2">
+                <button id="zoomInBtn" class="btn-3d btn-3d-dark p-2">
+                    <i class="fa fa-search-plus"></i>
+                </button>
+                <button id="zoomOutBtn" class="btn-3d btn-3d-dark p-2">
+                    <i class="fa fa-search-minus"></i>
+                </button>
+                <button id="resetViewBtn" class="btn-3d btn-3d-dark p-2">
+                    <i class="fa fa-arrows-alt"></i>
+                </button>
+            </div>
+            
+            <!-- Canvas Container -->
+            <div class="flex-1 relative overflow-hidden grid-pattern">
+                <canvas id="gameCanvas" class="absolute top-0 left-0"></canvas>
+            </div>
+            
+            <!-- Status Bar -->
+            <div class="bg-dark border-t border-gray-800 py-2 px-4 text-sm text-gray-400 flex justify-between">
+                <div>
+                    <span id="statusText">就绪</span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center">
+                        <span class="inline-block w-3 h-3 bg-primary rounded-full mr-1"></span>
+                        <span>存活</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="inline-block w-3 h-3 bg-gray-700 rounded-full mr-1"></span>
+                        <span>死亡</span>
+                    </div>
+                    <div>
+                        <span id="fpsCounter">60 FPS</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Hidden File Inputs -->
+    <input type="file" id="loadFileInput" accept=".rle,.json" class="hidden">
+    
+    <!-- Modals -->
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-dark border border-gray-700 rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">康威生命游戏帮助</h2>
+                    <button id="closeHelpBtn" class="text-gray-400 hover:text-white">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-primary mb-2">游戏规则</h3>
+                        <p class="text-gray-300">康威生命游戏是一个零玩家游戏，其演化由初始状态决定。游戏在一个二维网格上进行，每个格子代表一个细胞，细胞有两种状态：存活或死亡。</p>
+                        <ul class="list-disc pl-5 mt-2 text-gray-300 space-y-1">
+                            <li>存活细胞周围有2-3个存活细胞，保持存活</li>
+                            <li>存活细胞周围存活细胞少于2个或多于3个，死亡</li>
+                            <li>死亡细胞周围有3个存活细胞，变为存活</li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold text-secondary mb-2">基本操作</h3>
+                        <ul class="list-disc pl-5 text-gray-300 space-y-1">
+                            <li>使用鼠标在网格上绘制或擦除细胞</li>
+                            <li>点击"开始"按钮运行模拟，再次点击暂停</li>
+                            <li>使用速度滑块调节模拟速度</li>
+                            <li>使用缩放按钮或鼠标滚轮调整视图</li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold text-accent mb-2">模式库</h3>
+                        <p class="text-gray-300">从模式库中选择预设模式，点击即可在画布上放置。你可以搜索特定模式或按类别浏览。</p>
+                    </div>
+                    
+                    <div>
+                        <h3 class="text-lg font-semibold text-info mb-2">文件操作</h3>
+                        <p class="text-gray-300">支持导入和导出RLE格式的生命游戏模式文件，也可以保存和加载自定义的JSON格式文件。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Export Modal -->
+    <div id="exportModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-dark border border-gray-700 rounded-lg shadow-xl max-w-md w-full">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold">导出模式</h2>
+                    <button id="closeExportBtn" class="text-gray-400 hover:text-white">
+                        <i class="fa fa-times text-xl"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label for="exportName" class="block text-sm font-medium text-gray-400 mb-1">
+                            模式名称
+                        </label>
+                        <input 
+                            type="text" 
+                            id="exportName" 
+                            placeholder="未命名模式" 
+                            class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label for="exportDesc" class="block text-sm font-medium text-gray-400 mb-1">
+                            描述 (可选)
+                        </label>
+                        <textarea 
+                            id="exportDesc" 
+                            rows="3" 
+                            placeholder="添加模式描述..." 
+                            class="w-full bg-gray-800 border border-gray-700 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-primary"
+                        ></textarea>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">
+                            导出格式
+                        </label>
+                        <div class="flex space-x-4">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="exportFormat" value="rle" checked class="form-radio text-primary">
+                                <span class="ml-2">RLE</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="exportFormat" value="json" class="form-radio text-primary">
+                                <span class="ml-2">JSON</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4 flex justify-end space-x-3">
+                        <button id="cancelExportBtn" class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">
+                            取消
+                        </button>
+                        <button id="confirmExportBtn" class="btn-3d btn-3d-primary">
+                            导出
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ====================
+        // Game Core Logic
+        // ====================
+        
+        class ConwayGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // Game state
+                this.grid = new Map(); // Sparse grid using Map for better performance
+                this.nextGrid = new Map();
+                this.isRunning = false;
+                this.generation = 0;
+                this.cellCount = 0;
+                
+                // View settings
+                this.cellSize = 10;
+                this.scale = 1;
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.dragging = false;
+                this.lastMouseX = 0;
+                this.lastMouseY = 0;
+                
+                // Drawing settings
+                this.drawMode = 'draw'; // 'draw', 'erase', 'fill'
+                this.isDrawing = false;
+                
+                // Performance settings
+                this.speed = 1.0;
+                this.lastFrameTime = 0;
+                this.frameInterval = 1000 / 60; // 60 FPS base
+                this.fps = 0;
+                this.frameCount = 0;
+                this.lastFpsUpdate = 0;
+                
+                // Pattern library
+                this.patterns = this.loadPatterns();
+                this.selectedPattern = null;
+                
+                // Initialize the game
+                this.init();
+            }
+            
+            init() {
+                // Set canvas size
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                // Initialize UI
+                this.updateUI();
+                this.populatePatternLibrary();
+                
+                // Start the game loop
+                requestAnimationFrame(this.gameLoop.bind(this));
+            }
+            
+            resizeCanvas() {
+                const container = this.canvas.parentElement;
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                this.draw();
+            }
+            
+            setupEventListeners() {
+                // Canvas events
+                this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                this.canvas.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                this.canvas.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                this.canvas.addEventListener('mouseleave', this.handleMouseUp.bind(this));
+                this.canvas.addEventListener('wheel', this.handleWheel.bind(this));
+                
+                // Touch events for mobile
+                this.canvas.addEventListener('touchstart', this.handleTouchStart.bind(this));
+                this.canvas.addEventListener('touchmove', this.handleTouchMove.bind(this));
+                this.canvas.addEventListener('touchend', this.handleTouchEnd.bind(this));
+                
+                // Control buttons
+                document.getElementById('playPauseBtn').addEventListener('click', () => this.togglePlayPause());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('newGameBtn').addEventListener('click', () => this.newGame());
+                document.getElementById('mobileNewGameBtn').addEventListener('click', () => this.newGame());
+                
+                // Drawing tools
+                document.getElementById('drawToolBtn').addEventListener('click', () => this.setDrawMode('draw'));
+                document.getElementById('eraseToolBtn').addEventListener('click', () => this.setDrawMode('erase'));
+                document.getElementById('fillToolBtn').addEventListener('click', () => this.setDrawMode('fill'));
+                document.getElementById('clearToolBtn').addEventListener('click', () => this.clearGrid());
+                
+                // Sliders
+                document.getElementById('speedSlider').addEventListener('input', (e) => {
+                    this.speed = parseFloat(e.target.value);
+                    document.getElementById('speedValue').textContent = `${this.speed.toFixed(1)}x`;
+                });
+                
+                document.getElementById('cellSizeSlider').addEventListener('input', (e) => {
+                    this.cellSize = parseInt(e.target.value);
+                    document.getElementById('cellSizeValue').textContent = `${this.cellSize}px`;
+                    this.draw();
+                });
+                
+                // View controls
+                document.getElementById('zoomInBtn').addEventListener('click', () => this.zoom(1.2));
+                document.getElementById('zoomOutBtn').addEventListener('click', () => this.zoom(0.8));
+                document.getElementById('resetViewBtn').addEventListener('click', () => this.resetView());
+                
+                // File operations
+                document.getElementById('saveBtn').addEventListener('click', () => this.save());
+                document.getElementById('mobileSaveBtn').addEventListener('click', () => this.save());
+                document.getElementById('loadBtn').addEventListener('click', () => this.load());
+                document.getElementById('mobileLoadBtn').addEventListener('click', () => this.load());
+                document.getElementById('exportBtn').addEventListener('click', () => this.showExportModal());
+                document.getElementById('mobileExportBtn').addEventListener('click', () => this.showExportModal());
+                document.getElementById('loadFileInput').addEventListener('change', (e) => this.handleFileLoad(e));
+                
+                // Modal controls
+                document.getElementById('helpBtn').addEventListener('click', () => this.showHelpModal());
+                document.getElementById('mobileHelpBtn').addEventListener('click', () => this.showHelpModal());
+                document.getElementById('closeHelpBtn').addEventListener('click', () => this.hideHelpModal());
+                document.getElementById('closeExportBtn').addEventListener('click', () => this.hideExportModal());
+                document.getElementById('cancelExportBtn').addEventListener('click', () => this.hideExportModal());
+                document.getElementById('confirmExportBtn').addEventListener('click', () => this.exportPattern());
+                
+                // Mobile menu
+                document.getElementById('mobileMenuBtn').addEventListener('click', () => this.toggleMobileMenu());
+                
+                // Pattern search
+                document.getElementById('patternSearch').addEventListener('input', (e) => this.filterPatterns(e.target.value));
+                
+                // Pattern categories
+                document.querySelectorAll('.pattern-category-btn').forEach(btn => {
+                    btn.addEventListener('click', () => this.filterPatternsByCategory(btn.textContent.trim()));
+                });
+            }
+            
+            // Mouse and touch event handlers
+            handleMouseDown(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // Check if clicking on a pattern in the sidebar
+                if (e.target.closest('#patternLibrary')) {
+                    return;
+                }
+                
+                // Convert screen coordinates to grid coordinates
+                const gridX = Math.floor((mouseX - this.offsetX) / (this.cellSize * this.scale));
+                const gridY = Math.floor((mouseY - this.offsetY) / (this.cellSize * this.scale));
+                
+                // Check if clicking on a cell or empty space
+                const cellKey = `${gridX},${gridY}`;
+                const cellExists = this.grid.has(cellKey);
+                
+                if (this.selectedPattern) {
+                    // Place pattern
+                    this.placePattern(this.selectedPattern, gridX, gridY);
+                    this.selectedPattern = null;
+                    this.updatePatternSelection();
+                    this.draw();
+                    return;
+                }
+                
+                if (cellExists || this.drawMode === 'draw' || this.drawMode === 'erase') {
+                    // Start drawing
+                    this.isDrawing = true;
+                    this.lastMouseX = mouseX;
+                    this.lastMouseY = mouseY;
+                    
+                    // Update the cell at the clicked position
+                    this.updateCell(gridX, gridY);
+                } else {
+                    // Start dragging the view
+                    this.dragging = true;
+                    this.lastMouseX = mouseX;
+                    this.lastMouseY = mouseY;
+                }
+            }
+            
+            handleMouseMove(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                if (this.isDrawing) {
+                    // Draw cells along the mouse path
+                    const dx = mouseX - this.lastMouseX;
+                    const dy = mouseY - this.lastMouseY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance > 0) {
+                        const steps = Math.ceil(distance / (this.cellSize * this.scale * 0.5));
+                        
+                        for (let i = 0; i <= steps; i++) {
+                            const t = i / steps;
+                            const x = this.lastMouseX + dx * t;
+                            const y = this.lastMouseY + dy * t;
+                            
+                            const gridX = Math.floor((x - this.offsetX) / (this.cellSize * this.scale));
+                            const gridY = Math.floor((y - this.offsetY) / (this.cellSize * this.scale));
+                            
+                            this.updateCell(gridX, gridY);
+                        }
+                    }
+                    
+                    this.lastMouseX = mouseX;
+                    this.lastMouseY = mouseY;
+                } else if (this.dragging) {
+                    // Drag the view
+                    this.offsetX += mouseX - this.lastMouseX;
+                    this.offsetY += mouseY - this.lastMouseY;
+                    this.lastMouseX = mouseX;
+                    this.lastMouseY = mouseY;
+                    this.draw();
+                }
+            }
+            
+            handleMouseUp() {
+                this.isDrawing = false;
+                this.dragging = false;
+            }
+            
+            handleWheel(e) {
+                e.preventDefault();
+                
+                // Determine zoom direction and factor
+                const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                
+                // Get mouse position relative to canvas
+                const rect = this.canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                // Calculate new scale
+                const newScale = Math.max(0.1, Math.min(10, this.scale * zoomFactor));
+                
+                // Adjust offset to zoom towards mouse position
+                this.offsetX = mouseX - (mouseX - this.offsetX) * (newScale / this.scale);
+                this.offsetY = mouseY - (mouseY - this.offsetY) * (newScale / this.scale);
+                
+                // Apply new scale
+                this.scale = newScale;
+                
+                // Redraw
+                this.draw();
+            }
+            
+            handleTouchStart(e) {
+                if (e.touches.length === 1) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousedown', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.canvas.dispatchEvent(mouseEvent);
+                }
+            }
+            
+            handleTouchMove(e) {
+                if (e.touches.length === 1) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const mouseEvent = new MouseEvent('mousemove', {
+                        clientX: touch.clientX,
+                        clientY: touch.clientY
+                    });
+                    this.canvas.dispatchEvent(mouseEvent);
+                }
+            }
+            
+            handleTouchEnd(e) {
+                e.preventDefault();
+                const mouseEvent = new MouseEvent('mouseup', {});
+                this.canvas.dispatchEvent(mouseEvent);
+            }
+            
+            // Game logic
+            updateCell(x, y) {
+                const key = `${x},${y}`;
+                
+                if (this.drawMode === 'draw') {
+                    this.grid.set(key, 1);
+                } else if (this.drawMode === 'erase') {
+                    this.grid.delete(key);
+                } else if (this.drawMode === 'fill') {
+                    // Fill mode: fill empty cells, erase filled cells
+                    if (this.grid.has(key)) {
+                        this.grid.delete(key);
+                    } else {
+                        this.grid.set(key, 1);
+                    }
+                }
+                
+                this.updateCellCount();
+                this.draw();
+            }
+            
+            updateCellCount() {
+                this.cellCount = this.grid.size;
+            }
+            
+            nextGeneration() {
+                // Clear next grid
+                this.nextGrid.clear();
+                
+                // Get all cells that need to be checked (current cells + their neighbors)
+                const cellsToCheck = new Set();
+                this.grid.forEach((value, key) => {
+                    const [x, y] = key.split(',').map(Number);
+                    cellsToCheck.add(key);
+                    
+                    // Add all neighbors
+                    for (let dx = -1; dx <= 1; dx++) {
+                        for (let dy = -1; dy <= 1; dy++) {
+                            if (dx !== 0 || dy !== 0) {
+                                const neighborKey = `${x + dx},${y + dy}`;
+                                cellsToCheck.add(neighborKey);
+                            }
+                        }
+                    }
+                });
+                
+                // Check each cell
+                cellsToCheck.forEach(key => {
+                    const [x, y] = key.split(',').map(Number);
+                    const isAlive = this.grid.has(key);
+                    const neighbors = this.countNeighbors(x, y);
+                    
+                    // Apply Conway's Game of Life rules
+                    if (isAlive && (neighbors === 2 || neighbors === 3)) {
+                        // Cell survives
+                        this.nextGrid.set(key, 1);
+                    } else if (!isAlive && neighbors === 3) {
+                        // Cell is born
+                        this.nextGrid.set(key, 1);
+                    }
+                });
+                
+                // Swap grids
+                const temp = this.grid;
+                this.grid = this.nextGrid;
+                this.nextGrid = temp;
+                
+                // Update generation count and cell count
+                this.generation++;
+                this.updateCellCount();
+            }
+            
+            countNeighbors(x, y) {
+                let count = 0;
+                
+                // Check all 8 neighbors
+                for (let dx = -1; dx <= 1; dx++) {
+                    for (let dy = -1; dy <= 1; dy++) {
+                        if (dx !== 0 || dy !== 0) {
+                            const neighborKey = `${x + dx},${y + dy}`;
+                            if (this.grid.has(neighborKey)) {
+                                count++;
+                            }
+                        }
+                    }
+                }
+                
+                return count;
+            }
+            
+            // Drawing
+            draw() {
+                const ctx = this.ctx;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                
+                // Clear canvas
+                ctx.clearRect(0, 0, width, height);
+                
+                // Draw grid lines if scale is high enough
+                if (this.scale > 0.5) {
+                    this.drawGridLines();
+                }
+                
+                // Draw cells
+                this.drawCells();
+                
+                // Draw UI elements
+                this.drawUI();
+            }
+            
+            drawGridLines() {
+                const ctx = this.ctx;
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                
+                // Calculate grid line positions
+                const startX = this.offsetX % (this.cellSize * this.scale);
+                const startY = this.offsetY % (this.cellSize * this.scale);
+                
+                // Set line style
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.lineWidth = 1;
+                
+                // Draw vertical lines
+                for (let x = startX; x < width; x += this.cellSize * this.scale) {
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x, height);
+                    ctx.stroke();
+                }
+                
+                // Draw horizontal lines
+                for (let y = startY; y < height; y += this.cellSize * this.scale) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, y);
+                    ctx.lineTo(width, y);
+                    ctx.stroke();
+                }
+            }
+            
+            drawCells() {
+                const ctx = this.ctx;
+                
+                // Set cell style
+                ctx.fillStyle = '#3B82F6';
+                
+                // Draw each cell
+                this.grid.forEach((value, key) => {
+                    const [x, y] = key.split(',').map(Number);
+                    const screenX = x * this.cellSize * this.scale + this.offsetX;
+                    const screenY = y * this.cellSize * this.scale + this.offsetY;
+                    
+                    // Only draw cells that are visible
+                    if (
+                        screenX + this.cellSize * this.scale > 0 &&
+                        screenX < this.canvas.width &&
+                        screenY + this.cellSize * this.scale > 0 &&
+                        screenY < this.canvas.height
+                    ) {
+                        ctx.fillRect(
+                            screenX,
+                            screenY,
+                            this.cellSize * this.scale,
+                            this.cellSize * this.scale
+                        );
+                    }
+                });
+            }
+            
+            drawUI() {
+                const ctx = this.ctx;
+                
+                // Draw view information
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                ctx.fillRect(10, 10, 150, 60);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '12px Arial';
+                ctx.fillText(`缩放: ${(this.scale * 100).toFixed(0)}%`, 20, 30);
+                ctx.fillText(`偏移: (${Math.round(this.offsetX)}, ${Math.round(this.offsetY)})`, 20, 50);
+            }
+            
+            // Game controls
+            togglePlayPause() {
+                this.isRunning = !this.isRunning;
+                this.updateUI();
+            }
+            
+            reset() {
+                this.isRunning = false;
+                this.generation = 0;
+                this.grid.clear();
+                this.nextGrid.clear();
+                this.updateCellCount();
+                this.draw();
+                this.updateUI();
+            }
+            
+            newGame() {
+                if (confirm('确定要开始新游戏吗？当前进度将会丢失。')) {
+                    this.reset();
+                }
+            }
+            
+            zoom(factor) {
+                // Get center of canvas
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                
+                // Calculate new scale
+                const newScale = Math.max(0.1, Math.min(10, this.scale * factor));
+                
+                // Adjust offset to zoom towards center
+                this.offsetX = centerX - (centerX - this.offsetX) * (newScale / this.scale);
+                this.offsetY = centerY - (centerY - this.offsetY) * (newScale / this.scale);
+                
+                // Apply new scale
+                this.scale = newScale;
+                
+                // Redraw
+                this.draw();
+            }
+            
+            resetView() {
+                this.scale = 1;
+                this.offsetX = this.canvas.width / 2;
+                this.offsetY = this.canvas.height / 2;
+                this.draw();
+            }
+            
+            setDrawMode(mode) {
+                this.drawMode = mode;
+                this.selectedPattern = null;
+                this.updateUI();
+                this.updatePatternSelection();
+            }
+            
+            clearGrid() {
+                if (confirm('确定要清除所有细胞吗？')) {
+                    this.grid.clear();
+                    this.updateCellCount();
+                    this.draw();
+                }
+            }
+            
+            // Pattern handling
+            loadPatterns() {
+                return [
+                    {
+                        name: '滑翔机',
+                        category: '飞船',
+                        description: '最基本的移动模式',
+                        cells: [
+                            [0, 0], [1, 1], [2, 0], [2, 1], [1, 2]
+                        ]
+                    },
+                    {
+                        name: '方块',
+                        category: '稳定',
+                        description: '最简单的稳定模式',
+                        cells: [
+                            [0, 0], [0, 1], [1, 0], [1, 1]
+                        ]
+                    },
+                    {
+                        name: '蜂巢',
+                        category: '稳定',
+                        description: '稳定的六边形模式',
+                        cells: [
+                            [0, 1], [0, 2], [1, 0], [1, 3], [2, 1], [2, 2]
+                        ]
+                    },
+                    {
+                        name: '面包',
+                        category: '稳定',
+                        description: '常见的稳定模式',
+                        cells: [
+                            [0, 1], [0, 2], [1, 0], [1, 3], [2, 0], [2, 3], [3, 1], [3, 2]
+                        ]
+                    },
+                    {
+                        name: '信标',
+                        category: '震荡器',
+                        description: '2代周期的震荡器',
+                        cells: [
+                            [0, 0], [0, 1], [1, 0], [2, 3], [3, 2], [3, 3]
+                        ]
+                    },
+                    {
+                        name: '脉冲星',
+                        category: '震荡器',
+                        description: '3代周期的震荡器',
+                        cells: [
+                            [0, 2], [0, 3], [0, 4], [2, 0], [3, 0], [4, 0],
+                            [0, 8], [0, 9], [0, 10], [2, 12], [3, 12], [4, 12],
+                            [6, 2], [6, 3], [6, 4], [8, 0], [9, 0], [10, 0],
+                            [6, 8], [6, 9], [6, 10], [8, 12], [9, 12], [10, 12],
+                            [12, 2], [12, 3], [12, 4], [14, 0], [15, 0], [16, 0],
+                            [12, 8], [12, 9], [12, 10], [14, 12], [15, 12], [16, 12],
+                            [2, 6], [3, 6], [4, 6], [0, 8], [0, 9], [0, 10],
+                            [8, 6], [9, 6], [10, 6], [6, 8], [6, 9], [6, 10],
+                            [14, 6], [15, 6], [16, 6], [12, 8], [12, 9], [12, 10],
+                            [2, 12], [3, 12], [4, 12], [0, 14], [0, 15], [0, 16],
+                            [8, 12], [9, 12], [10, 12], [6, 14], [6, 15], [6, 16],
+                            [14, 12], [15, 12], [16, 12], [12, 14], [12, 15], [12, 16]
+                        ]
+                    },
+                    {
+                        name: 'Gosper滑翔机枪',
+                        category: 'Guns',
+                        description: '产生滑翔机的模式',
+                        cells: [
+                            [0, 25], [1, 23], [1, 25], [2, 13], [2, 14], [2, 21], [2, 22], [2, 35], [2, 36],
+                            [3, 12], [3, 16], [3, 21], [3, 22], [3, 35], [3, 36], [4, 1], [4, 2], [4, 11],
+                            [4, 17], [4, 21], [4, 22], [5, 1], [5, 2], [5, 11], [5, 15], [5, 17], [5, 18],
+                            [5, 23], [5, 25], [6, 11], [6, 17], [6, 25], [7, 12], [7, 16], [8, 13], [8, 14]
+                        ]
+                    },
+                    {
+                        name: ' lwss',
+                        category: '飞船',
+                        description: '轻量级飞船',
+                        cells: [
+                            [0, 0], [0, 3], [1, 4], [2, 0], [2, 4], [3, 1], [3, 2], [3, 3]
+                        ]
+                    },
+                    {
+                        name: 'mwss',
+                        category: '飞船',
+                        description: '中量级飞船',
+                        cells: [
+                            [0, 1], [0, 4], [1, 5], [2, 0], [2, 5], [3, 1], [3, 2], [3, 3], [3, 4]
+                        ]
+                    },
+                    {
+                        name: 'hwss',
+                        category: '飞船',
+                        description: '重量级飞船',
+                        cells: [
+                            [0, 2], [0, 5], [1, 6], [2, 0], [2, 6], [3, 1], [3, 2], [3, 3], [3, 4], [3, 5]
+                        ]
+                    },
+                    {
+                        name: '蛙',
+                        category: '震荡器',
+                        description: '4代周期的震荡器',
+                        cells: [
+                            [0, 0], [0, 1], [1, 0], [1, 1], [2, 2], [2, 3], [3, 2], [3, 3]
+                        ]
+                    },
+                    {
+                        name: '洛伦兹吸引子',
+                        category: '组合',
+                        description: '复杂的模式',
+                        cells: [
+                            [10, 10], [10, 11], [11, 10], [11, 11], [12, 12], [12, 13], [13, 12], [13, 13],
+                            [14, 14], [14, 15], [15, 14], [15, 15], [16, 16], [16, 17], [17, 16], [17, 17],
+                            [18, 18], [18, 19], [19, 18], [19, 19], [20, 20], [20, 21], [21, 20], [21, 21]
+                        ]
+                    }
+                ];
+            }
+            
+            populatePatternLibrary() {
+                const container = document.getElementById('patternLibrary');
+                container.innerHTML = '';
+                
+                this.patterns.forEach(pattern => {
+                    const patternElement = document.createElement('div');
+                    patternElement.className = 'pattern-item bg-gray-800 rounded-md p-2 cursor-pointer hover:bg-gray-700 transition-colors';
+                    patternElement.dataset.pattern = pattern.name;
+                    
+                    // Create a mini preview canvas
+                    const previewCanvas = document.createElement('canvas');
+                    previewCanvas.width = 40;
+                    previewCanvas.height = 40;
+                    previewCanvas.className = 'mx-auto mb-1';
+                    
+                    // Draw the pattern on the preview canvas
+                    const previewCtx = previewCanvas.getContext('2d');
+                    previewCtx.fillStyle = '#3B82F6';
+                    
+                    // Find the bounds of the pattern
+                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                    pattern.cells.forEach(([x, y]) => {
+                        minX = Math.min(minX, x);
+                        maxX = Math.max(maxX, x);
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                    });
+                    
+                    const width = maxX - minX + 1;
+                    const height = maxY - minY + 1;
+                    const cellSize = Math.min(36 / Math.max(width, height), 6);
+                    const offsetX = (40 - width * cellSize) / 2 - minX * cellSize;
+                    const offsetY = (40 - height * cellSize) / 2 - minY * cellSize;
+                    
+                    pattern.cells.forEach(([x, y]) => {
+                        previewCtx.fillRect(
+                            x * cellSize + offsetX,
+                            y * cellSize + offsetY,
+                            cellSize,
+                            cellSize
+                        );
+                    });
+                    
+                    patternElement.appendChild(previewCanvas);
+                    patternElement.innerHTML += `<div class="text-xs text-center truncate">${pattern.name}</div>`;
+                    
+                    // Add click event
+                    patternElement.addEventListener('click', () => {
+                        this.selectPattern(pattern);
+                    });
+                    
+                    container.appendChild(patternElement);
+                });
+            }
+            
+            selectPattern(pattern) {
+                this.selectedPattern = pattern;
+                this.drawMode = null;
+                this.updateUI();
+                this.updatePatternSelection();
+            }
+            
+            updatePatternSelection() {
+                // Update pattern selection UI
+                document.querySelectorAll('.pattern-item').forEach(item => {
+                    if (this.selectedPattern && item.dataset.pattern === this.selectedPattern.name) {
+                        item.classList.add('ring-2', 'ring-primary');
+                    } else {
+                        item.classList.remove('ring-2', 'ring-primary');
+                    }
+                });
+            }
+            
+            placePattern(pattern, x, y) {
+                // Place the pattern at the specified position
+                pattern.cells.forEach(([cellX, cellY]) => {
+                    const key = `${x + cellX},${y + cellY}`;
+                    this.grid.set(key, 1);
+                });
+                
+                this.updateCellCount();
+            }
+            
+            filterPatterns(searchTerm) {
+                const container = document.getElementById('patternLibrary');
+                const patternItems = container.querySelectorAll('.pattern-item');
+                
+                searchTerm = searchTerm.toLowerCase();
+                
+                patternItems.forEach(item => {
+                    const patternName = item.dataset.pattern.toLowerCase();
+                    const pattern = this.patterns.find(p => p.name === item.dataset.pattern);
+                    const patternDesc = pattern ? pattern.description.toLowerCase() : '';
+                    
+                    if (patternName.includes(searchTerm) || patternDesc.includes(searchTerm)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            }
+            
+            filterPatternsByCategory(category) {
+                // Update category button UI
+                document.querySelectorAll('.pattern-category-btn').forEach(btn => {
+                    if (btn.textContent.trim() === category) {
+                        btn.classList.remove('bg-gray-800', 'text-gray-300');
+                        btn.classList.add('bg-accent', 'text-white');
+                    } else {
+                        btn.classList.remove('bg-accent', 'text-white');
+                        btn.classList.add('bg-gray-800', 'text-gray-300');
+                    }
+                });
+                
+                // Filter patterns
+                const container = document.getElementById('patternLibrary');
+                const patternItems = container.querySelectorAll('.pattern-item');
+                
+                patternItems.forEach(item => {
+                    const pattern = this.patterns.find(p => p.name === item.dataset.pattern);
+                    
+                    if (category === '全部' || pattern && pattern.category === category) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            }
+            
+            // File operations
+            save() {
+                const data = {
+                    generation: this.generation,
+                    cells: Array.from(this.grid.keys()).map(key => {
+                        const [x, y] = key.split(',').map(Number);
+                        return [x, y];
+                    })
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `conway-life-${Date.now()}.json`;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+            }
+            
+            load() {
+                document.getElementById('loadFileInput').click();
+            }
+            
+            handleFileLoad(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const content = e.target.result;
+                        
+                        if (file.name.endsWith('.json')) {
+                            // Load JSON format
+                            const data = JSON.parse(content);
+                            this.loadFromJSON(data);
+                        } else if (file.name.endsWith('.rle')) {
+                            // Load RLE format
+                            const pattern = this.parseRLE(content);
+                            this.loadFromPattern(pattern);
+                        } else {
+                            alert('不支持的文件格式。请使用.json或.rle文件。');
+                        }
+                    } catch (error) {
+                        console.error('加载文件时出错:', error);
+                        alert('加载文件时出错: ' + error.message);
+                    }
+                };
+                
+                reader.readAsText(file);
+                
+                // Reset file input
+                e.target.value = '';
+            }
+            
+            loadFromJSON(data) {
+                this.grid.clear();
+                
+                if (data.cells) {
+                    data.cells.forEach(([x, y]) => {
+                        this.grid.set(`${x},${y}`, 1);
+                    });
+                }
+                
+                this.generation = data.generation || 0;
+                this.updateCellCount();
+                this.draw();
+                this.updateUI();
+            }
+            
+            loadFromPattern(pattern) {
+                this.grid.clear();
+                
+                pattern.cells.forEach(([x, y]) => {
+                    this.grid.set(`${x},${y}`, 1);
+                });
+                
+                this.generation = 0;
+                this.updateCellCount();
+                this.draw();
+                this.updateUI();
+            }
+            
+            parseRLE(rle) {
+                // Simple RLE parser
+                const lines = rle.split('\n');
+                let pattern = {
+                    name: '导入的模式',
+                    cells: []
+                };
+                
+                // Parse metadata
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line.startsWith('#N ')) {
+                        pattern.name = line.substring(3);
+                    } else if (line.startsWith('#C ')) {
+                        pattern.description = (pattern.description || '') + line.substring(3) + '\n';
+                    } else if (line.startsWith('x = ')) {
+                        // Found the start of the pattern
+                        const dimensions = line.match(/x = (\d+), y = (\d+)/);
+                        if (dimensions) {
+                            pattern.width = parseInt(dimensions[1]);
+                            pattern.height = parseInt(dimensions[2]);
+                        }
+                        
+                        // Parse the pattern data
+                        let x = 0;
+                        let y = 0;
+                        let count = '';
+                        
+                        for (let j = i + 1; j < lines.length; j++) {
+                            const dataLine = lines[j];
+                            
+                            for (let k = 0; k < dataLine.length; k++) {
+                                const c = dataLine[k];
+                                
+                                if (c >= '0' && c <= '9') {
+                                    count += c;
+                                } else if (c === 'b' || c === '.') {
+                                    // Dead cells
+                                    const num = count ? parseInt(count) : 1;
+                                    x += num;
+                                    count = '';
+                                } else if (c === 'o') {
+                                    // Live cells
+                                    const num = count ? parseInt(count) : 1;
+                                    for (let l = 0; l < num; l++) {
+                                        pattern.cells.push([x + l, y]);
+                                    }
+                                    x += num;
+                                    count = '';
+                                } else if (c === '$') {
+                                    // End of line
+                                    const num = count ? parseInt(count) : 1;
+                                    y += num;
+                                    x = 0;
+                                    count = '';
+                                } else if (c === '!') {
+                                    // End of pattern
+                                    return pattern;
+                                }
+                            }
+                        }
+                        
+                        break;
+                    }
+                }
+                
+                return pattern;
+            }
+            
+            exportPattern() {
+                const name = document.getElementById('exportName').value || '未命名模式';
+                const description = document.getElementById('exportDesc').value || '';
+                const format = document.querySelector('input[name="exportFormat"]:checked').value;
+                
+                let content;
+                let filename;
+                let mimeType;
+                
+                if (format === 'json') {
+                    // Export as JSON
+                    const data = {
+                        name,
+                        description,
+                        generation: this.generation,
+                        cells: Array.from(this.grid.keys()).map(key => {
+                            const [x, y] = key.split(',').map(Number);
+                            return [x, y];
+                        })
+                    };
+                    
+                    content = JSON.stringify(data, null, 2);
+                    filename = `${name.replace(/\s+/g, '-').toLowerCase()}.json`;
+                    mimeType = 'application/json';
+                } else {
+                    // Export as RLE
+                    // Find the bounds of the pattern
+                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                    const cells = Array.from(this.grid.keys()).map(key => {
+                        const [x, y] = key.split(',').map(Number);
+                        minX = Math.min(minX, x);
+                        maxX = Math.max(maxX, x);
+                        minY = Math.min(minY, y);
+                        maxY = Math.max(maxY, y);
+                        return [x, y];
+                    });
+                    
+                    const width = maxX - minX + 1;
+                    const height = maxY - minY + 1;
+                    
+                    // Create RLE header
+                    let rle = `#N ${name}\n`;
+                    if (description) {
+                        rle += `#C ${description.replace(/\n/g, '\n#C ')}\n`;
+                    }
+                    rle += `x = ${width}, y = ${height}, rule = B3/S23\n`;
+                    
+                    // Create RLE data
+                    let currentRun = 0;
+                    let currentCell = '.';
+                    
+                    for (let y = minY; y <= maxY; y++) {
+                        for (let x = minX; x <= maxX; x++) {
+                            const cell = this.grid.has(`${x},${y}`) ? 'o' : '.';
+                            
+                            if (cell === currentCell) {
+                                currentRun++;
+                            } else {
+                                if (currentRun > 0) {
+                                    rle += currentRun > 1 ? `${currentRun}${currentCell}` : currentCell;
+                                }
+                                currentCell = cell;
+                                currentRun = 1;
+                            }
+                        }
+                        
+                        if (y < maxY) {
+                            if (currentRun > 0) {
+                                rle += currentRun > 1 ? `${currentRun}${currentCell}` : currentCell;
+                            }
+                            rle += '$';
+                            currentCell = '.';
+                            currentRun = 0;
+                        }
+                    }
+                    
+                    if (currentRun > 0) {
+                        rle += currentRun > 1 ? `${currentRun}${currentCell}` : currentCell;
+                    }
+                    
+                    rle += '!';
+                    
+                    content = rle;
+                    filename = `${name.replace(/\s+/g, '-').toLowerCase()}.rle`;
+                    mimeType = 'text/plain';
+                }
+                
+                // Create download link
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                
+                URL.revokeObjectURL(url);
+                
+                // Hide export modal
+                this.hideExportModal();
+            }
+            
+            // UI updates
+            updateUI() {
+                // Update play/pause button
+                const playPauseBtn = document.getElementById('playPauseBtn');
+                if (this.isRunning) {
+                    playPauseBtn.innerHTML = '<i class="fa fa-pause mr-2"></i><span>暂停</span>';
+                    playPauseBtn.classList.remove('btn-3d-primary');
+                    playPauseBtn.classList.add('btn-3d-warning');
+                } else {
+                    playPauseBtn.innerHTML = '<i class="fa fa-play mr-2"></i><span>开始</span>';
+                    playPauseBtn.classList.remove('btn-3d-warning');
+                    playPauseBtn.classList.add('btn-3d-primary');
+                }
+                
+                // Update drawing tool buttons
+                document.getElementById('drawToolBtn').classList.toggle('btn-3d-secondary', this.drawMode === 'draw');
+                document.getElementById('drawToolBtn').classList.toggle('btn-3d-dark', this.drawMode !== 'draw');
+                document.getElementById('eraseToolBtn').classList.toggle('btn-3d-secondary', this.drawMode === 'erase');
+                document.getElementById('eraseToolBtn').classList.toggle('btn-3d-dark', this.drawMode !== 'erase');
+                document.getElementById('fillToolBtn').classList.toggle('btn-3d-secondary', this.drawMode === 'fill');
+                document.getElementById('fillToolBtn').classList.toggle('btn-3d-dark', this.drawMode !== 'fill');
+                
+                // Update status text
+                const statusText = document.getElementById('statusText');
+                if (this.isRunning) {
+                    statusText.textContent = '模拟运行中';
+                    statusText.className = 'text-warning';
+                } else if (this.selectedPattern) {
+                    statusText.textContent = `选择模式: ${this.selectedPattern.name}`;
+                    statusText.className = 'text-accent';
+                } else {
+                    switch (this.drawMode) {
+                        case 'draw':
+                            statusText.textContent = '绘制模式';
+                            statusText.className = 'text-secondary';
+                            break;
+                        case 'erase':
+                            statusText.textContent = '擦除模式';
+                            statusText.className = 'text-danger';
+                            break;
+                        case 'fill':
+                            statusText.textContent = '填充模式';
+                            statusText.className = 'text-info';
+                            break;
+                        default:
+                            statusText.textContent = '就绪';
+                            statusText.className = 'text-gray-400';
+                    }
+                }
+                
+                // Update generation and cell count
+                document.getElementById('generationCount').textContent = this.generation;
+                document.getElementById('cellCount').textContent = this.cellCount;
+                
+                // Update FPS counter
+                document.getElementById('fpsCounter').textContent = `${this.fps} FPS`;
+            }
+            
+            toggleMobileMenu() {
+                const mobileMenu = document.getElementById('mobileMenu');
+                mobileMenu.classList.toggle('hidden');
+            }
+            
+            showHelpModal() {
+                document.getElementById('helpModal').classList.remove('hidden');
+            }
+            
+            hideHelpModal() {
+                document.getElementById('helpModal').classList.add('hidden');
+            }
+            
+            showExportModal() {
+                document.getElementById('exportName').value = '未命名模式';
+                document.getElementById('exportDesc').value = '';
+                document.getElementById('exportModal').classList.remove('hidden');
+            }
+            
+            hideExportModal() {
+                document.getElementById('exportModal').classList.add('hidden');
+            }
+            
+            // Game loop
+            gameLoop(timestamp) {
+                // Calculate FPS
+                this.frameCount++;
+                if (timestamp - this.lastFpsUpdate >= 1000) {
+                    this.fps = Math.round((this.frameCount * 1000) / (timestamp - this.lastFpsUpdate));
+                    this.frameCount = 0;
+                    this.lastFpsUpdate = timestamp;
+                }
+                
+                // Update game state if running
+                if (this.isRunning) {
+                    const elapsed = timestamp - this.lastFrameTime;
+                    
+                    if (elapsed >= this.frameInterval / this.speed) {
+                        this.nextGeneration();
+                        this.draw();
+                        this.lastFrameTime = timestamp;
+                    }
+                } else {
+                    this.lastFrameTime = timestamp;
+                }
+                
+                // Update UI
+                this.updateUI();
+                
+                // Continue game loop
+                requestAnimationFrame(this.gameLoop.bind(this));
+            }
+        }
+        
+        // Initialize the game when the page loads
+        window.addEventListener('DOMContentLoaded', () => {
+            const game = new ConwayGame();
+        });
+    </script>
+</body>
+</html>
